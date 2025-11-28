@@ -1,6 +1,9 @@
 # Build stage
 FROM node:20-alpine as build
 
+# Fix CVE-2024-58251 and CVE-2025-46394
+RUN apk add --no-cache --upgrade busybox
+
 # Set working directory
 WORKDIR /app
 
@@ -17,6 +20,9 @@ RUN npm run build
 
 # Production stage
 FROM node:20-alpine as production
+
+# Fix CVE-2024-58251 and CVE-2025-46394
+RUN apk add --no-cache --upgrade busybox
 
 WORKDIR /app
 
@@ -35,6 +41,9 @@ CMD ["npm", "run", "server"]
 
 # Development stage
 FROM node:20-alpine as development
+
+# Fix CVE-2024-58251 and CVE-2025-46394
+RUN apk add --no-cache --upgrade busybox
 
 WORKDIR /app
 

@@ -6,3 +6,9 @@ dist
 .env.development
 .env.production
 *.log
+.github
+.vscode
+docker-compose.yml
+README.md
+bun.lock
+supabase
