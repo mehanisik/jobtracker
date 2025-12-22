@@ -1,28 +1,28 @@
-import { useAuthStore } from '@/store/auth';
-import { useEffect } from 'react';
-import supabase from './supabase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { Loader } from 'lucide-react';
+import { useEffect } from 'react';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '@/store/auth';
+import { auth } from './firebase';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const refreshSession = useAuthStore(state => state.refreshSession);
-  const isLoading = useAuthStore(state => state.isLoading);
-  const error = useAuthStore(state => state.error);
+  const refreshSession = useAuthStore((state) => state.refreshSession);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const error = useAuthStore((state) => state.error);
 
   useEffect(() => {
+    // Initial sync
     void refreshSession();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Listen for changes
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       useAuthStore.setState({
-        user: session?.user ?? null,
-        session: session,
+        user: user,
       });
     });
 
     return () => {
-      subscription.unsubscribe();
+      unsubscribe();
     };
   }, [refreshSession]);
 

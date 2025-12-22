@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
-import { Plus, BarChart } from 'lucide-react';
-import Table from '@/components/ui/table';
-import type { Question, QuestionProgress, QuestionCategory } from '@/types/db-tables';
-import { useProgressStore } from '@/store/progress';
+import { BarChart, Plus } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { DataTable } from '@/components/ui/data-table';
 import { useAuthStore } from '@/store/auth';
+import { useProgressStore } from '@/store/progress';
+import type { Question, QuestionCategory, QuestionProgress } from '@/types/db-tables';
 
 // Helper function to format date
 const formatDate = (dateString: string | null) => {
@@ -32,7 +32,7 @@ function QuestionsSection({
   setIsAddDialogOpen,
 }: QuestionsSectionProps) {
   const [activeTab, setActiveTab] = useState('all');
-  const [isActionDropdownOpen, setIsActionDropdownOpen] = useState<number | null>(null);
+  const [isActionDropdownOpen, setIsActionDropdownOpen] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -40,12 +40,12 @@ function QuestionsSection({
   const { user } = useAuthStore();
 
   const filteredQuestions = useMemo(() => {
-    return questions.filter(question => {
+    return questions.filter((question) => {
       if (activeTab === 'all') return true;
       if (activeTab === 'solved')
-        return progress.find(p => p.question_id === question.id)?.status === 'solved';
+        return progress.find((p) => p.question_id === question.id)?.status === 'solved';
       if (activeTab === 'unsolved')
-        return progress.find(p => p.question_id === question.id)?.status !== 'solved';
+        return progress.find((p) => p.question_id === question.id)?.status !== 'solved';
       return true;
     });
   }, [questions, activeTab, progress]);
@@ -61,29 +61,28 @@ function QuestionsSection({
   };
 
   const handleStatusChange = async (
-    questionId: number,
+    questionId: string,
     newStatus: QuestionProgress['status'],
-    incrementOnly: boolean = false
+    incrementOnly: boolean = false,
   ) => {
-    if (!user?.id) {
+    if (!user?.uid) {
       console.error('User not authenticated');
       return;
     }
 
-    const existingProgress = progress.find(p => p.question_id === questionId);
+    const existingProgress = progress.find((p) => p.question_id === questionId);
     const now = new Date().toISOString();
 
     try {
       if (!existingProgress) {
         await createProgress({
           question_id: questionId,
-          user_id: user.id,
           status: newStatus,
           times_solved: newStatus === 'solved' ? 1 : 0,
           last_solved_at: newStatus === 'solved' ? now : null,
         });
       } else {
-        await updateProgress(questionId, {
+        await updateProgress(existingProgress.id, {
           status: incrementOnly ? existingProgress.status : newStatus,
           times_solved: incrementOnly
             ? (existingProgress.times_solved ?? 0) + 1
@@ -110,18 +109,18 @@ function QuestionsSection({
   const columns = ['Title', 'Difficulty', 'Category', 'Status', 'Times Solved', 'Last Solved'];
 
   const renderRow = (question: Question) => {
-    const category = categories.find(c => c.id === question.category_id);
-    const questionProgress = progress.find(p => p.question_id === question.id);
+    const category = categories.find((c) => c.id === question.category_id);
+    const questionProgress = progress.find((p) => p.question_id === question.id);
 
     return {
       Title: (
-        <div className="font-medium">
+        <div className='font-medium'>
           {question.url ? (
             <a
               href={question.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
+              target='_blank'
+              rel='noopener noreferrer'
+              className='text-blue-600 hover:underline'
             >
               {question.title}
             </a>
@@ -163,70 +162,73 @@ function QuestionsSection({
   };
 
   const actions = (question: Question) => (
-    <div className="relative">
+    <div className='relative'>
       <button
-        type="button"
+        type='button'
         data-dropdown-trigger
         onClick={() => {
           setIsActionDropdownOpen(isActionDropdownOpen === question.id ? null : question.id);
         }}
-        className="text-gray-500 hover:text-gray-700 focus:outline-none"
+        className='text-gray-500 hover:text-gray-700 focus:outline-none'
       >
-        <span className="sr-only">Open menu</span>
-        <BarChart className="h-4 w-4" />
+        <span className='sr-only'>Open menu</span>
+        <BarChart className='h-4 w-4' />
       </button>
 
       {isActionDropdownOpen === question.id && (
-        <div className="absolute right-0 z-10 mt-1 w-56 rounded-md border bg-white shadow-lg">
-          <div className="py-1">
+        <div className='absolute right-0 z-10 mt-1 w-56 rounded-md border bg-white shadow-lg'>
+          <div className='py-1'>
             <button
-              type="button"
+              type='button'
               onClick={() => {
                 void handleStatusChange(question.id, 'not started');
               }}
-              className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
+              className='block w-full px-4 py-2 text-left text-sm hover:bg-gray-100'
             >
               Mark as Not Started
             </button>
             <button
-              type="button"
+              type='button'
               onClick={() => {
                 void handleStatusChange(question.id, 'attempted');
               }}
-              className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
+              className='block w-full px-4 py-2 text-left text-sm hover:bg-gray-100'
             >
               Mark as Attempted
             </button>
             <button
-              type="button"
+              type='button'
               onClick={() => {
                 void handleStatusChange(question.id, 'solved');
               }}
-              className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
+              className='block w-full px-4 py-2 text-left text-sm hover:bg-gray-100'
             >
               Mark as Solved
             </button>
             <button
-              type="button"
+              type='button'
               onClick={() => {
                 void handleStatusChange(question.id, 'solved', true);
               }}
-              className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
+              className='block w-full px-4 py-2 text-left text-sm hover:bg-gray-100'
             >
               Increment Solved Count
             </button>
             <button
-              type="button"
+              type='button'
               onClick={async () => {
                 if (!user) return;
                 try {
-                  await resetProgress(question.id);
+                  const p = progress.find((prog) => prog.question_id === question.id);
+                  if (p) {
+                    await resetProgress(p.id);
+                  }
                   setIsActionDropdownOpen(null);
                 } catch (error) {
                   console.error('Error resetting progress:', error);
                 }
               }}
-              className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+              className='block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50'
             >
               Reset Progress
             </button>
@@ -237,13 +239,13 @@ function QuestionsSection({
   );
 
   return (
-    <div className="bg-background rounded-lg border shadow-sm">
-      <div className="border-b p-4 pb-0">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-medium">Questions</h3>
-          <div className="flex space-x-1">
+    <div className='bg-background rounded-lg border shadow-sm'>
+      <div className='border-b p-4 pb-0'>
+        <div className='flex items-center justify-between'>
+          <h3 className='text-lg font-medium'>Questions</h3>
+          <div className='flex space-x-1'>
             <button
-              type="button"
+              type='button'
               className={`rounded-md px-3 py-1 text-sm font-medium ${
                 activeTab === 'all' ? 'bg-accent text-white' : 'bg-background border'
               }`}
@@ -254,7 +256,7 @@ function QuestionsSection({
               All
             </button>
             <button
-              type="button"
+              type='button'
               className={`rounded-md px-3 py-1 text-sm font-medium ${
                 activeTab === 'solved' ? 'bg-accent text-white' : 'bg-background border'
               }`}
@@ -265,7 +267,7 @@ function QuestionsSection({
               Solved
             </button>
             <button
-              type="button"
+              type='button'
               className={`rounded-md px-3 py-1 text-sm font-medium ${
                 activeTab === 'unsolved' ? 'bg-accent text-white' : 'bg-background border'
               }`}
@@ -278,9 +280,9 @@ function QuestionsSection({
           </div>
         </div>
       </div>
-      <div className="p-6">
+      <div className='p-6'>
         {filteredQuestions.length > 0 ? (
-          <Table
+          <DataTable<Question>
             columns={columns}
             data={filteredQuestions}
             itemsPerPage={itemsPerPage}
@@ -291,22 +293,22 @@ function QuestionsSection({
             actions={actions}
           />
         ) : (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="mb-2 text-gray-500">No questions found</div>
-            <p className="max-w-md text-sm text-gray-500">
+          <div className='flex flex-col items-center justify-center py-12 text-center'>
+            <div className='mb-2 text-gray-500'>No questions found</div>
+            <p className='max-w-md text-sm text-gray-500'>
               {questions.length === 0
                 ? 'Add your first LeetCode question to start tracking your progress.'
                 : 'Try adjusting your filters or search query.'}
             </p>
             {questions.length === 0 && (
               <button
-                type="button"
+                type='button'
                 onClick={() => {
                   setIsAddDialogOpen(true);
                 }}
-                className="mt-4 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+                className='mt-4 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none'
               >
-                <Plus className="mr-2 h-4 w-4" />
+                <Plus className='mr-2 h-4 w-4' />
                 Add Your First Question
               </button>
             )}

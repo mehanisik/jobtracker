@@ -1,102 +1,90 @@
-import { useMemo } from "react";
-import type { ReactNode } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import type * as React from 'react';
 
-interface TableProps<T> {
-    columns: string[];
-    data: T[];
-    itemsPerPage?: number;
-    currentPage: number;
-    totalPages: number;
-    onPageChange: (direction: 'prev' | 'next') => void;
-    actions?: (item: T) => ReactNode;
-    renderRow: (item: T) => Record<string, ReactNode>;
+import { cn } from '@/utils/cn';
+
+function Table({ className, ...props }: React.ComponentProps<'table'>) {
+  return (
+    <div data-slot='table-container' className='relative w-full overflow-x-auto'>
+      <table
+        data-slot='table'
+        className={cn('w-full caption-bottom text-sm', className)}
+        {...props}
+      />
+    </div>
+  );
 }
 
-const ITEMS_PER_PAGE = 10;
-
-function Table<T>({
-    columns,
-    data,
-    itemsPerPage = ITEMS_PER_PAGE,
-    currentPage,
-    totalPages,
-    onPageChange,
-    actions,
-    renderRow
-}: TableProps<T>) {
-    const paginatedData = useMemo(() => {
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        return data.slice(startIndex, startIndex + itemsPerPage);
-    }, [data, currentPage, itemsPerPage]);
-
-    return (
-        <div className="rounded-lg border border-border overflow-hidden">
-            <table className="w-full border-collapse bg-card">
-                <thead className="bg-muted text-muted-foreground">
-                    <tr>
-                        <th className="border-b border-border p-4 text-left text-sm font-medium">#</th>
-                        {columns.map((column) => (
-                            <th key={column} className="border-b border-border p-4 text-left text-sm font-medium">
-                                {column}
-                            </th>
-                        ))}
-                        {actions && (
-                            <th className="border-b border-border p-4 text-left text-sm font-medium">Actions</th>
-                        )}
-                    </tr>
-                </thead>
-                <tbody>
-                    {paginatedData.map((row, index) => (
-                        <tr key={index} className="hover:bg-muted/50 transition-colors">
-                            <td className="border-b border-border p-4 text-sm">
-                                {(currentPage - 1) * itemsPerPage + index + 1}
-                            </td>
-                            {columns.map((column) => (
-                                <td key={column} className="border-b border-border p-4 text-sm">
-                                    {renderRow(row)[column]}
-                                </td>
-                            ))}
-                            {actions && (
-                                <td className="border-b border-border p-4 text-sm">
-                                    {actions(row)}
-                                </td>
-                            )}
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-            <div className="flex items-center justify-between p-4">
-                <p className="text-sm text-muted-foreground">
-                    Showing {((currentPage - 1) * itemsPerPage) + 1} to{' '}
-                    {Math.min(currentPage * itemsPerPage, data.length)} of{' '}
-                    {data.length} entries
-                </p>
-                <div className="flex gap-2">
-                    <button
-                        type="button"
-                        onClick={() => {
-                            onPageChange('prev');
-                        }}
-                        disabled={currentPage === 1}
-                        className="p-2 rounded-lg border border-border disabled:opacity-50"
-                    >
-                        <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            onPageChange('next');
-                        }}
-                        disabled={currentPage === totalPages}
-                        className="p-2 rounded-lg border border-border disabled:opacity-50"
-                    >
-                        <ChevronRight className="w-4 h-4" />
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
+function TableHeader({ className, ...props }: React.ComponentProps<'thead'>) {
+  return <thead data-slot='table-header' className={cn('[&_tr]:border-b', className)} {...props} />;
 }
 
-export default Table;
+function TableBody({ className, ...props }: React.ComponentProps<'tbody'>) {
+  return (
+    <tbody
+      data-slot='table-body'
+      className={cn('[&_tr:last-child]:border-0', className)}
+      {...props}
+    />
+  );
+}
+
+function TableFooter({ className, ...props }: React.ComponentProps<'tfoot'>) {
+  return (
+    <tfoot
+      data-slot='table-footer'
+      className={cn('bg-muted/50 border-t font-medium [&>tr]:last:border-b-0', className)}
+      {...props}
+    />
+  );
+}
+
+function TableRow({ className, ...props }: React.ComponentProps<'tr'>) {
+  return (
+    <tr
+      data-slot='table-row'
+      className={cn(
+        'hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors',
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function TableHead({ className, ...props }: React.ComponentProps<'th'>) {
+  return (
+    <th
+      data-slot='table-head'
+      className={cn(
+        'text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function TableCell({ className, ...props }: React.ComponentProps<'td'>) {
+  return (
+    <td
+      data-slot='table-cell'
+      className={cn(
+        'p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function TableCaption({ className, ...props }: React.ComponentProps<'caption'>) {
+  return (
+    <caption
+      data-slot='table-caption'
+      className={cn('text-muted-foreground mt-4 text-sm', className)}
+      {...props}
+    />
+  );
+}
+
+export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption };

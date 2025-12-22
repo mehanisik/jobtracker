@@ -1,8 +1,8 @@
 export interface UpcomingInterview {
-  interview_id: number;
+  interview_id: string;
   interview_date: string;
   interview_type: string;
-  location: string;
+  location: string | null;
   status: string;
   notes: string | null;
   company_name: string;

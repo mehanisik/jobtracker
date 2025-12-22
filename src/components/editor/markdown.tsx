@@ -1,41 +1,42 @@
-import React, { useRef } from 'react';
-import useTheme from '@/hooks/use-theme';
 import type { MDXEditorMethods, SandpackPreset } from '@mdxeditor/editor';
 import {
-  MDXEditor,
-  headingsPlugin,
-  listsPlugin,
-  quotePlugin,
-  thematicBreakPlugin,
-  tablePlugin,
-  linkPlugin,
-  linkDialogPlugin,
-  imagePlugin,
-  frontmatterPlugin,
-  codeBlockPlugin,
-  markdownShortcutPlugin,
-  diffSourcePlugin,
-  codeMirrorPlugin,
-  sandpackPlugin,
-  toolbarPlugin,
   BlockTypeSelect,
   BoldItalicUnderlineToggles,
   CodeToggle,
   CreateLink,
+  codeBlockPlugin,
+  codeMirrorPlugin,
+  diffSourcePlugin,
+  frontmatterPlugin,
+  headingsPlugin,
   InsertCodeBlock,
   InsertFrontmatter,
   InsertImage,
   InsertSandpack,
   InsertTable,
   InsertThematicBreak,
+  imagePlugin,
   ListsToggle,
+  linkDialogPlugin,
+  linkPlugin,
+  listsPlugin,
+  MDXEditor,
+  markdownShortcutPlugin,
+  quotePlugin,
   Separator,
+  sandpackPlugin,
+  tablePlugin,
+  thematicBreakPlugin,
+  toolbarPlugin,
   UndoRedo,
 } from '@mdxeditor/editor';
+import type React from 'react';
+import { useRef } from 'react';
+import useTheme from '@/hooks/use-theme';
 
 import '@mdxeditor/editor/style.css';
-import { SANDPACK_PRESETS } from '@/constants/sandpack-presets.constant';
 import { CODE_LANGUAGES } from '@/constants/code-languages.constant';
+import { SANDPACK_PRESETS } from '@/constants/sandpack-presets.constant';
 
 interface MarkdownEditorProps {
   markdownRef?: React.RefObject<MDXEditorMethods>;
@@ -72,7 +73,7 @@ export function MarkdownEditor({
       linkPlugin(),
       linkDialogPlugin(),
       imagePlugin({
-        imageUploadHandler: async file => {
+        imageUploadHandler: async (file) => {
           if (onImageUpload) {
             return await onImageUpload(file);
           }
@@ -98,7 +99,7 @@ export function MarkdownEditor({
 
     const toolbar = toolbarPlugin({
       toolbarContents: () => (
-        <div className="flex flex-wrap gap-1 border-b p-1">
+        <div className='flex flex-wrap gap-1 border-b p-1'>
           <UndoRedo />
           <Separator />
           <BoldItalicUnderlineToggles />

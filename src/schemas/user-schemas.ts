@@ -1,4 +1,4 @@
-import { string, ref, object, type InferType } from 'yup';
+import { type InferType, object, ref, string } from 'yup';
 
 export const signInSchema = object({
   email: string().email('Please enter a valid email').required('Email is required'),
@@ -11,7 +11,7 @@ export const signUpSchema = object({
     .min(8, 'Password must be at least 8 characters')
     .matches(
       /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/,
-      'Password must contain at least one letter, one number, and one special character'
+      'Password must contain at least one letter, one number, and one special character',
     )
     .required('Password is required'),
   confirmPassword: string()

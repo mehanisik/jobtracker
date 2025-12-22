@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { JobStatus } from '@/constants/job-statuses.constant';
+
 interface Option {
   value: string;
   label: string;
@@ -18,7 +19,7 @@ export function StatusForm<T extends JobStatus>({
   initialStatus,
   options,
   className = 'w-full rounded-md border p-2',
-  onStatusChange
+  onStatusChange,
 }: StatusFormProps<T>) {
   const [status, setStatus] = useState<T>((initialStatus ?? options[0]?.value) as T);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -30,7 +31,7 @@ export function StatusForm<T extends JobStatus>({
       setStatus(newStatus);
     } catch (error) {
       console.error(error);
-      setStatus(initialStatus ?? options[0]?.value as T);
+      setStatus(initialStatus ?? (options[0]?.value as T));
     } finally {
       setIsUpdating(false);
     }
@@ -52,4 +53,3 @@ export function StatusForm<T extends JobStatus>({
     </select>
   );
 }
-

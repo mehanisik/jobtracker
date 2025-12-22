@@ -1,6 +1,12 @@
-import type { Enums } from '@/types/database';
-
-export type JobStatus = Enums<'job_status'>;
+export type JobStatus =
+  | 'applied'
+  | 'archived'
+  | 'interviewing'
+  | 'new'
+  | 'offered'
+  | 'rejected'
+  | 'saved'
+  | 'withdrawn';
 
 export const JOB_STATUSES: JobStatus[] = [
   'applied',

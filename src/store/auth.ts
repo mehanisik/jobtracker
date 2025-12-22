@@ -1,13 +1,22 @@
+import {
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  GithubAuthProvider,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  type User,
+} from 'firebase/auth';
+import toast from 'react-hot-toast';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import type { Session, User } from '@supabase/supabase-js';
-import supabase from '@/utils/supabase';
+import { auth } from '@/utils/firebase';
 import { useErrorStore } from './error-handler';
-import toast from 'react-hot-toast';
 
 interface AuthState {
   user: User | null;
-  session: Session | null;
   isLoading: boolean;
   error: string | null;
 
@@ -23,41 +32,22 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    set => ({
+    (set) => ({
       user: null,
-      session: null,
       isLoading: false,
       error: null,
 
       signUp: async (email: string, password: string) => {
         try {
           set({ isLoading: true, error: null });
-          const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-          });
-
-          if (error) {
-            useErrorStore.getState().showError(error);
-            set({
-              error: error instanceof Error ? error.message : 'An error occurred during sign up',
-              isLoading: false,
-            });
-            return;
-          }
-
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
           set({
-            user: data.user,
-            session: data.session,
+            user: userCredential.user,
             isLoading: false,
           });
           toast.success('Account created successfully!');
         } catch (error) {
-          useErrorStore
-            .getState()
-            .showError(
-              error instanceof Error ? error : new Error('An error occurred during sign up')
-            );
+          useErrorStore.getState().showError(error as Error);
           set({
             error: error instanceof Error ? error.message : 'An error occurred during sign up',
             isLoading: false,
@@ -68,32 +58,14 @@ export const useAuthStore = create<AuthState>()(
       signIn: async (email: string, password: string) => {
         try {
           set({ isLoading: true, error: null });
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-
-          if (error) {
-            useErrorStore.getState().showError(error);
-            set({
-              error: error instanceof Error ? error.message : 'An error occurred during sign in',
-              isLoading: false,
-            });
-            return;
-          }
-
+          const userCredential = await signInWithEmailAndPassword(auth, email, password);
           set({
-            user: data.user,
-            session: data.session,
+            user: userCredential.user,
             isLoading: false,
           });
           toast.success('Signed in successfully!');
         } catch (error) {
-          useErrorStore
-            .getState()
-            .showError(
-              error instanceof Error ? error : new Error('An error occurred during sign in')
-            );
+          useErrorStore.getState().showError(error as Error);
           set({
             error: error instanceof Error ? error.message : 'An error occurred during sign in',
             isLoading: false,
@@ -104,29 +76,14 @@ export const useAuthStore = create<AuthState>()(
       signOut: async () => {
         try {
           set({ isLoading: true, error: null });
-          const { error } = await supabase.auth.signOut();
-
-          if (error) {
-            useErrorStore.getState().showError(error);
-            set({
-              error: error instanceof Error ? error.message : 'An error occurred during sign out',
-              isLoading: false,
-            });
-            return;
-          }
-
+          await firebaseSignOut(auth);
           set({
             user: null,
-            session: null,
             isLoading: false,
           });
           toast.success('Signed out successfully!');
         } catch (error) {
-          useErrorStore
-            .getState()
-            .showError(
-              error instanceof Error ? error : new Error('An error occurred during sign out')
-            );
+          useErrorStore.getState().showError(error as Error);
           set({
             error: error instanceof Error ? error.message : 'An error occurred during sign out',
             isLoading: false,
@@ -137,27 +94,11 @@ export const useAuthStore = create<AuthState>()(
       resetPassword: async (email: string) => {
         try {
           set({ isLoading: true, error: null });
-          const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${import.meta.env.VITE_BASE_URL}/reset-password`,
-          });
-
-          if (error) {
-            useErrorStore.getState().showError(error);
-            set({
-              error: error instanceof Error ? error.message : 'Failed to send reset password email',
-              isLoading: false,
-            });
-            return;
-          }
-
+          await sendPasswordResetEmail(auth, email);
           set({ isLoading: false });
           toast.success('Password reset email sent!');
         } catch (error) {
-          useErrorStore
-            .getState()
-            .showError(
-              error instanceof Error ? error : new Error('Failed to send reset password email')
-            );
+          useErrorStore.getState().showError(error as Error);
           set({
             error: error instanceof Error ? error.message : 'Failed to send reset password email',
             isLoading: false,
@@ -168,27 +109,15 @@ export const useAuthStore = create<AuthState>()(
       signInWithGoogle: async () => {
         try {
           set({ isLoading: true, error: null });
-          const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-              redirectTo: `${window.location.origin}/dashboard`,
-            },
+          const provider = new GoogleAuthProvider();
+          const userCredential = await signInWithPopup(auth, provider);
+          set({
+            user: userCredential.user,
+            isLoading: false,
           });
-
-          if (error) {
-            useErrorStore.getState().showError(error);
-            set({
-              error: error instanceof Error ? error.message : 'Failed to sign in with Google',
-              isLoading: false,
-            });
-            return;
-          }
-
-          set({ isLoading: false });
+          toast.success('Signed in with Google!');
         } catch (error) {
-          useErrorStore
-            .getState()
-            .showError(error instanceof Error ? error : new Error('Failed to sign in with Google'));
+          useErrorStore.getState().showError(error as Error);
           set({
             error: error instanceof Error ? error.message : 'Failed to sign in with Google',
             isLoading: false,
@@ -199,27 +128,15 @@ export const useAuthStore = create<AuthState>()(
       signInWithGithub: async () => {
         try {
           set({ isLoading: true, error: null });
-          const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'github',
-            options: {
-              redirectTo: `${import.meta.env.VITE_BASE_URL}/dashboard`,
-            },
+          const provider = new GithubAuthProvider();
+          const userCredential = await signInWithPopup(auth, provider);
+          set({
+            user: userCredential.user,
+            isLoading: false,
           });
-
-          if (error) {
-            useErrorStore.getState().showError(error);
-            set({
-              error: error instanceof Error ? error.message : 'Failed to sign in with Github',
-              isLoading: false,
-            });
-            return;
-          }
-
-          set({ isLoading: false });
+          toast.success('Signed in with GitHub!');
         } catch (error) {
-          useErrorStore
-            .getState()
-            .showError(error instanceof Error ? error : new Error('Failed to sign in with Github'));
+          useErrorStore.getState().showError(error as Error);
           set({
             error: error instanceof Error ? error.message : 'Failed to sign in with Github',
             isLoading: false,
@@ -228,42 +145,23 @@ export const useAuthStore = create<AuthState>()(
       },
 
       refreshSession: async () => {
-        try {
-          const { data, error } = await supabase.auth.getSession();
-
-          if (error) {
-            useErrorStore.getState().showError(error);
-            set({
-              error: error instanceof Error ? error.message : 'Failed to refresh session',
-              user: null,
-              session: null,
-            });
-            return;
-          }
-
-          set({
-            user: data.session?.user ?? null,
-            session: data.session,
+        // Firebase handles token persistence and refresh automatically
+        // We just need to ensure the user state is synced with the current auth state
+        return new Promise((resolve) => {
+          const unsubscribe = onAuthStateChanged(auth, (user) => {
+            set({ user });
+            unsubscribe();
+            resolve();
           });
-        } catch (error) {
-          useErrorStore
-            .getState()
-            .showError(error instanceof Error ? error : new Error('Failed to refresh session'));
-          set({
-            error: error instanceof Error ? error.message : 'Failed to refresh session',
-            user: null,
-            session: null,
-          });
-        }
+        });
       },
     }),
     {
       name: 'auth-storage',
-      partialize: state => ({
+      partialize: (state) => ({
         user: state.user,
-        session: state.session,
       }),
       storage: createJSONStorage(() => sessionStorage),
-    }
-  )
+    },
+  ),
 );

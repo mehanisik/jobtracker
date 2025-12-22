@@ -1,11 +1,19 @@
-import type { TablesInsert, TablesUpdate } from '@/types/database';
-import supabase from '@/utils/supabase';
-import { create } from 'zustand';
-import { useAuthStore } from './auth';
-import type { QuestionCategory } from '@/types/db-tables';
-import type { Question } from '@/types/db-tables';
-import { useErrorStore } from './error-handler';
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  query,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
 import toast from 'react-hot-toast';
+import { create } from 'zustand';
+import type { Question, QuestionCategory } from '@/types/db-tables';
+import { db } from '@/utils/firebase';
+import { useAuthStore } from './auth';
+import { useErrorStore } from './error-handler';
 
 interface QuestionsState {
   questions: Question[];
@@ -13,275 +21,227 @@ interface QuestionsState {
   error: string | null;
   categories: QuestionCategory[];
   fetchQuestions: () => Promise<void>;
-  createQuestion: (question: TablesInsert<'questions'>) => Promise<void>;
-  updateQuestion: (id: number, question: TablesUpdate<'questions'>) => Promise<void>;
-  deleteQuestion: (id: number) => Promise<void>;
+  createQuestion: (
+    question: Omit<Question, 'id' | 'user_id' | 'created_at' | 'updated_at'>,
+  ) => Promise<void>;
+  updateQuestion: (
+    id: string,
+    question: Partial<Omit<Question, 'id' | 'user_id'>>,
+  ) => Promise<void>;
+  deleteQuestion: (id: string) => Promise<void>;
   fetchCategories: () => Promise<void>;
-  createCategory: (category: TablesInsert<'question_categories'>) => Promise<void>;
-  updateCategory: (id: number, category: TablesUpdate<'question_categories'>) => Promise<void>;
-  deleteCategory: (id: number) => Promise<void>;
+  createCategory: (
+    category: Omit<QuestionCategory, 'id' | 'user_id' | 'created_at' | 'updated_at'>,
+  ) => Promise<void>;
+  updateCategory: (
+    id: string,
+    category: Partial<Omit<QuestionCategory, 'id' | 'user_id'>>,
+  ) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
 }
 
-export const useQuestionsStore = create<QuestionsState>(set => ({
+export const useQuestionsStore = create<QuestionsState>((set) => ({
   questions: [],
   isLoading: false,
   error: null,
   categories: [],
+
   fetchQuestions: async () => {
     try {
       set({ isLoading: true, error: null });
       const user = useAuthStore.getState().user;
       if (!user) {
-        useErrorStore.getState().showError(new Error('User not authenticated'));
-        set({ isLoading: false, error: 'User not authenticated' });
+        set({ isLoading: false, questions: [] });
         return;
       }
-      const { data, error } = await supabase.from('questions').select('*').eq('user_id', user.id);
-      if (error) {
-        useErrorStore.getState().showError(error);
-        set({ isLoading: false, error: error.message });
-      } else {
-        set({ isLoading: false, questions: data });
-      }
+
+      const q = query(collection(db, 'questions'), where('user_id', '==', user.uid));
+      const querySnapshot = await getDocs(q);
+      const questions = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Question[];
+
+      set({ isLoading: false, questions });
     } catch (error) {
-      useErrorStore
-        .getState()
-        .showError(error instanceof Error ? error : new Error('Failed to fetch questions'));
+      useErrorStore.getState().showError(error as Error);
       set({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to fetch questions',
       });
     }
   },
-  createQuestion: async (question: TablesInsert<'questions'>) => {
+
+  createQuestion: async (
+    questionData: Omit<Question, 'id' | 'user_id' | 'created_at' | 'updated_at'>,
+  ) => {
     try {
       set({ isLoading: true, error: null });
       const user = useAuthStore.getState().user;
       if (!user) {
-        useErrorStore.getState().showError(new Error('User not authenticated'));
-        set({ isLoading: false, error: 'User not authenticated' });
-        return;
+        throw new Error('User not authenticated');
       }
-      const { data, error } = await supabase
-        .from('questions')
-        .insert(question)
-        .eq('user_id', user.id)
-        .select();
-      if (error) {
-        useErrorStore.getState().showError(error);
-        set({ isLoading: false, error: error.message });
-      } else {
-        set(state => ({
-          isLoading: false,
-          questions: [...state.questions, ...data],
-        }));
-        toast.success('Question created successfully');
-      }
+
+      const newQuestion = {
+        ...questionData,
+        user_id: user.uid,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const docRef = await addDoc(collection(db, 'questions'), newQuestion);
+      set((state) => ({
+        isLoading: false,
+        questions: [...state.questions, { id: docRef.id, ...newQuestion } as Question],
+      }));
+      toast.success('Question created successfully');
     } catch (error) {
-      useErrorStore
-        .getState()
-        .showError(error instanceof Error ? error : new Error('Failed to create question'));
+      useErrorStore.getState().showError(error as Error);
       set({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to create question',
       });
     }
   },
-  updateQuestion: async (id: number, question: TablesUpdate<'questions'>) => {
+
+  updateQuestion: async (id: string, questionData: Partial<Omit<Question, 'id' | 'user_id'>>) => {
     try {
       set({ isLoading: true, error: null });
-      const user = useAuthStore.getState().user;
-      if (!user) {
-        useErrorStore.getState().showError(new Error('User not authenticated'));
-        set({ isLoading: false, error: 'User not authenticated' });
-        return;
-      }
-      const { data, error } = await supabase
-        .from('questions')
-        .update(question)
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .select();
-      if (error) {
-        useErrorStore.getState().showError(error);
-        set({ isLoading: false, error: error.message });
-      } else {
-        set(state => ({
-          isLoading: false,
-          questions: state.questions.map(q => (q.id === id ? data[0] : q)),
-        }));
-        toast.success('Question updated successfully');
-      }
+      const questionRef = doc(db, 'questions', id);
+      const updateData = {
+        ...questionData,
+        updated_at: new Date().toISOString(),
+      };
+
+      await updateDoc(questionRef, updateData);
+      set((state) => ({
+        isLoading: false,
+        questions: state.questions.map((q) => (q.id === id ? { ...q, ...updateData } : q)),
+      }));
+      toast.success('Question updated successfully');
     } catch (error) {
-      useErrorStore
-        .getState()
-        .showError(error instanceof Error ? error : new Error('Failed to update question'));
+      useErrorStore.getState().showError(error as Error);
       set({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to update question',
       });
     }
   },
-  deleteQuestion: async (id: number) => {
+
+  deleteQuestion: async (id: string) => {
     try {
       set({ isLoading: true, error: null });
-      const user = useAuthStore.getState().user;
-      if (!user) {
-        useErrorStore.getState().showError(new Error('User not authenticated'));
-        set({ isLoading: false, error: 'User not authenticated' });
-        return;
-      }
-      const { error } = await supabase
-        .from('questions')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
-      if (error) {
-        useErrorStore.getState().showError(error);
-        set({ isLoading: false, error: error.message });
-      } else {
-        set(state => ({
-          isLoading: false,
-          questions: state.questions.filter(q => q.id !== id),
-        }));
-        toast.success('Question deleted successfully');
-      }
+      await deleteDoc(doc(db, 'questions', id));
+      set((state) => ({
+        isLoading: false,
+        questions: state.questions.filter((q) => q.id !== id),
+      }));
+      toast.success('Question deleted successfully');
     } catch (error) {
-      useErrorStore
-        .getState()
-        .showError(error instanceof Error ? error : new Error('Failed to delete question'));
+      useErrorStore.getState().showError(error as Error);
       set({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to delete question',
       });
     }
   },
+
   fetchCategories: async () => {
     try {
       set({ isLoading: true, error: null });
       const user = useAuthStore.getState().user;
       if (!user) {
-        useErrorStore.getState().showError(new Error('User not authenticated'));
-        set({ isLoading: false, error: 'User not authenticated' });
+        set({ isLoading: false, categories: [] });
         return;
       }
-      const { data, error } = await supabase
-        .from('question_categories')
-        .select('*')
-        .eq('user_id', user.id);
-      if (error) {
-        useErrorStore.getState().showError(error);
-        set({ isLoading: false, error: error.message });
-      } else {
-        set({ isLoading: false, categories: data });
-      }
+
+      const q = query(collection(db, 'question_categories'), where('user_id', '==', user.uid));
+      const querySnapshot = await getDocs(q);
+      const categories = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as QuestionCategory[];
+
+      set({ isLoading: false, categories });
     } catch (error) {
-      useErrorStore
-        .getState()
-        .showError(error instanceof Error ? error : new Error('Failed to fetch categories'));
+      useErrorStore.getState().showError(error as Error);
       set({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to fetch categories',
       });
     }
   },
-  createCategory: async (category: TablesInsert<'question_categories'>) => {
+
+  createCategory: async (
+    categoryData: Omit<QuestionCategory, 'id' | 'user_id' | 'created_at' | 'updated_at'>,
+  ) => {
     try {
       set({ isLoading: true, error: null });
       const user = useAuthStore.getState().user;
       if (!user) {
-        useErrorStore.getState().showError(new Error('User not authenticated'));
-        set({ isLoading: false, error: 'User not authenticated' });
-        return;
+        throw new Error('User not authenticated');
       }
-      const { data, error } = await supabase
-        .from('question_categories')
-        .insert(category)
-        .eq('user_id', user.id)
-        .select();
-      if (error) {
-        useErrorStore.getState().showError(error);
-        set({ isLoading: false, error: error.message });
-      } else {
-        set(state => ({
-          isLoading: false,
-          categories: [...state.categories, ...data],
-        }));
-        toast.success('Category created successfully');
-      }
+
+      const newCategory = {
+        ...categoryData,
+        user_id: user.uid,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const docRef = await addDoc(collection(db, 'question_categories'), newCategory);
+      set((state) => ({
+        isLoading: false,
+        categories: [...state.categories, { id: docRef.id, ...newCategory } as QuestionCategory],
+      }));
+      toast.success('Category created successfully');
     } catch (error) {
-      useErrorStore
-        .getState()
-        .showError(error instanceof Error ? error : new Error('Failed to create category'));
+      useErrorStore.getState().showError(error as Error);
       set({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to create category',
       });
     }
   },
-  updateCategory: async (id: number, category: TablesUpdate<'question_categories'>) => {
+
+  updateCategory: async (
+    id: string,
+    categoryData: Partial<Omit<QuestionCategory, 'id' | 'user_id'>>,
+  ) => {
     try {
       set({ isLoading: true, error: null });
-      const user = useAuthStore.getState().user;
-      if (!user) {
-        useErrorStore.getState().showError(new Error('User not authenticated'));
-        set({ isLoading: false, error: 'User not authenticated' });
-        return;
-      }
-      const { data, error } = await supabase
-        .from('question_categories')
-        .update(category)
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .select();
-      if (error) {
-        useErrorStore.getState().showError(error);
-        set({ isLoading: false, error: error.message });
-      } else {
-        set(state => ({
-          isLoading: false,
-          categories: state.categories.map(c => (c.id === id ? data[0] : c)),
-        }));
-        toast.success('Category updated successfully');
-      }
+      const categoryRef = doc(db, 'question_categories', id);
+      const updateData = {
+        ...categoryData,
+        updated_at: new Date().toISOString(),
+      };
+
+      await updateDoc(categoryRef, updateData);
+      set((state) => ({
+        isLoading: false,
+        categories: state.categories.map((c) => (c.id === id ? { ...c, ...updateData } : c)),
+      }));
+      toast.success('Category updated successfully');
     } catch (error) {
-      useErrorStore
-        .getState()
-        .showError(error instanceof Error ? error : new Error('Failed to update category'));
+      useErrorStore.getState().showError(error as Error);
       set({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to update category',
       });
     }
   },
-  deleteCategory: async (id: number) => {
+
+  deleteCategory: async (id: string) => {
     try {
       set({ isLoading: true, error: null });
-      const user = useAuthStore.getState().user;
-      if (!user) {
-        useErrorStore.getState().showError(new Error('User not authenticated'));
-        set({ isLoading: false, error: 'User not authenticated' });
-        return;
-      }
-      const { error } = await supabase
-        .from('question_categories')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
-      if (error) {
-        useErrorStore.getState().showError(error);
-        set({ isLoading: false, error: error.message });
-      } else {
-        set(state => ({
-          isLoading: false,
-          categories: state.categories.filter(c => c.id !== id),
-        }));
-        toast.success('Category deleted successfully');
-      }
+      await deleteDoc(doc(db, 'question_categories', id));
+      set((state) => ({
+        isLoading: false,
+        categories: state.categories.filter((c) => c.id !== id),
+      }));
+      toast.success('Category deleted successfully');
     } catch (error) {
-      useErrorStore
-        .getState()
-        .showError(error instanceof Error ? error : new Error('Failed to delete category'));
+      useErrorStore.getState().showError(error as Error);
       set({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to delete category',

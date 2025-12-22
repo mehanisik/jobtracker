@@ -20,6 +20,10 @@ dist-ssr
 .cache/
 build/
 out/
+.next
+.output
+.vercel
+.netlify
 
 # Bundle analysis
 analyze-bundle.html
@@ -35,6 +39,8 @@ coverage/
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
 .idea
 .DS_Store
 *.suo
@@ -42,6 +48,7 @@ coverage/
 *.njsproj
 *.sln
 *.sw?
+.history
 
 # Environment variables
 .env
@@ -50,17 +57,17 @@ coverage/
 .env.development
 .env.test
 .env.production
-
-# Sentry Config File
 .env.sentry-build-plugin
+.env.local.supabase
 
 # Supabase
-.env.local.supabase
 supabase/.temp/
 
 # TypeScript
 *.tsbuildinfo
 
 # Misc
-.DS_Store
 Thumbs.db
+.vite
+.turbo
+.biome

@@ -1,11 +1,11 @@
-import { useCallback, useState, useMemo, useEffect } from 'react';
-import { Search, Trash, LayoutGrid, Table as TableIcon, Plus, Eye } from 'lucide-react';
-import Table from '@/components/ui/table';
+import { Eye, LayoutGrid, Plus, Search, Table as TableIcon, Trash } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import DocumentCard from '@/components/editor/document-card';
+import DocumentEditor from '@/components/editor/document-editor';
+import { DataTable } from '@/components/ui/data-table';
 import { useAuthStore } from '@/store/auth';
 import { useDocumentsStore } from '@/store/documents';
 import type { Document } from '@/types/db-tables';
-import DocumentEditor from '@/components/editor/document-editor';
-import DocumentCard from '@/components/editor/document-card';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -31,7 +31,7 @@ function DocumentsPage() {
   }, [fetchDocuments]);
 
   const handleDelete = useCallback(
-    async (id: number) => {
+    async (id: string) => {
       if (!id) {
         return;
       }
@@ -41,7 +41,7 @@ function DocumentsPage() {
         console.error('Failed to delete document:', error);
       }
     },
-    [deleteDocument]
+    [deleteDocument],
   );
 
   const handleSave = useCallback(async () => {
@@ -56,7 +56,7 @@ function DocumentsPage() {
         await createDocument({
           title: currentDocument.title ?? '',
           content: currentDocument.content ?? '',
-          user_id: user?.id ?? '',
+          user_id: user?.uid ?? '',
           doc_type: 'markdown',
         });
       }
@@ -69,7 +69,7 @@ function DocumentsPage() {
     } catch (error) {
       console.error('Failed to save document:', error);
     }
-  }, [currentDocument, createDocument, updateDocument, user?.id]);
+  }, [currentDocument, createDocument, updateDocument, user?.uid]);
 
   const handleEdit = useCallback((document: Document) => {
     setCurrentDocument({
@@ -91,7 +91,7 @@ function DocumentsPage() {
   }, []);
 
   const filteredDocuments = useMemo(() => {
-    return documents.filter(doc => {
+    return documents.filter((doc) => {
       return (
         search.toLowerCase() === '' ||
         doc.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -103,7 +103,7 @@ function DocumentsPage() {
   const totalPages = Math.ceil(filteredDocuments.length / ITEMS_PER_PAGE);
 
   const handlePageChange = (direction: 'prev' | 'next') => {
-    setCurrentPage(p => {
+    setCurrentPage((p) => {
       if (direction === 'prev') {
         return Math.max(1, p - 1);
       }
@@ -112,48 +112,48 @@ function DocumentsPage() {
   };
 
   const tableActions = (document: Document) => (
-    <div className="flex gap-2">
+    <div className='flex gap-2'>
       <button
-        type="button"
+        type='button'
         onClick={() => {
           handleEdit(document);
         }}
-        className="text-muted-foreground hover:text-primary"
+        className='text-muted-foreground hover:text-primary'
       >
-        <Eye className="h-4 w-4" />
+        <Eye className='h-4 w-4' />
       </button>
       <button
-        type="button"
+        type='button'
         onClick={() => {
           void handleDelete(document.id);
         }}
-        className="text-muted-foreground hover:text-destructive"
+        className='text-muted-foreground hover:text-destructive'
       >
-        <Trash className="h-4 w-4" />
+        <Trash className='h-4 w-4' />
       </button>
     </div>
   );
 
   return (
-    <div className="w-full">
-      <main className="mx-auto max-w-[100rem] px-6 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-foreground text-2xl font-bold">Documents</h1>
+    <div className='w-full'>
+      <main className='mx-auto max-w-[100rem] px-6 py-8'>
+        <div className='mb-6 flex items-center justify-between'>
+          <h1 className='text-foreground text-2xl font-bold'>Documents</h1>
           {!isEditing && (
             <button
-              type="button"
+              type='button'
               onClick={handleNew}
-              className="bg-primary text-primary-foreground flex items-center gap-2 rounded-lg px-4 py-2"
+              className='bg-primary text-primary-foreground flex items-center gap-2 rounded-lg px-4 py-2'
             >
-              <Plus className="h-4 w-4" />
+              <Plus className='h-4 w-4' />
               New Document
             </button>
           )}
         </div>
 
         {isLoading ? (
-          <div className="border-muted bg-background flex h-64 flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
-            <p className="text-muted-foreground mb-4 text-lg">Loading documents...</p>
+          <div className='border-muted bg-background flex h-64 flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center'>
+            <p className='text-muted-foreground mb-4 text-lg'>Loading documents...</p>
           </div>
         ) : isEditing ? (
           <DocumentEditor
@@ -170,26 +170,26 @@ function DocumentsPage() {
             onChange={setCurrentDocument}
           />
         ) : (
-          <div className="relative">
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex gap-2">
-                <div className="border-border flex items-center gap-2 rounded-lg border p-2">
-                  <Search className="text-muted-foreground h-4 w-4" />
+          <div className='relative'>
+            <div className='mb-4 flex items-center justify-between'>
+              <div className='flex gap-2'>
+                <div className='border-border flex items-center gap-2 rounded-lg border p-2'>
+                  <Search className='text-muted-foreground h-4 w-4' />
                   <input
-                    type="text"
-                    placeholder="Search"
+                    type='text'
+                    placeholder='Search'
                     value={search}
-                    onChange={e => {
+                    onChange={(e) => {
                       setSearch(e.target.value);
                     }}
-                    className="rounded-lg border-none bg-transparent px-4 py-2 outline-none"
+                    className='rounded-lg border-none bg-transparent px-4 py-2 outline-none'
                   />
                 </div>
               </div>
 
-              <div className="flex gap-2">
+              <div className='flex gap-2'>
                 <button
-                  type="button"
+                  type='button'
                   className={`border-border rounded-lg border p-2 ${
                     view === 'grid' ? 'bg-primary text-primary-foreground' : 'bg-transparent'
                   }`}
@@ -197,10 +197,10 @@ function DocumentsPage() {
                     setView('grid');
                   }}
                 >
-                  <LayoutGrid className="h-4 w-4" />
+                  <LayoutGrid className='h-4 w-4' />
                 </button>
                 <button
-                  type="button"
+                  type='button'
                   onClick={() => {
                     setView('table');
                   }}
@@ -208,14 +208,14 @@ function DocumentsPage() {
                     view === 'table' ? 'bg-primary text-primary-foreground' : 'bg-transparent'
                   }`}
                 >
-                  <TableIcon className="h-4 w-4" />
+                  <TableIcon className='h-4 w-4' />
                 </button>
               </div>
             </div>
 
             {view === 'grid' && (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filteredDocuments.map(doc => (
+              <div className='grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3'>
+                {filteredDocuments.map((doc) => (
                   <DocumentCard
                     key={doc.id}
                     document={doc}
@@ -227,14 +227,14 @@ function DocumentsPage() {
             )}
 
             {view === 'table' && (
-              <Table<Document>
+              <DataTable<Document>
                 columns={['Title', 'Content', 'Last Updated']}
                 data={filteredDocuments}
                 currentPage={currentPage}
                 totalPages={totalPages}
                 onPageChange={handlePageChange}
                 actions={tableActions}
-                renderRow={doc => ({
+                renderRow={(doc: Document) => ({
                   Title: doc.title,
                   'Last Updated': doc.updated_at
                     ? new Date(doc.updated_at).toLocaleDateString()

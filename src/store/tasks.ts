@@ -1,144 +1,126 @@
-import type { Task } from '@/types/db-tables';
-import supabase from '@/utils/supabase';
-import { create } from 'zustand';
-import { useAuthStore } from './auth';
-import type { TablesInsert, TablesUpdate } from '@/types/database';
-import { useErrorStore } from './error-handler';
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  query,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
 import toast from 'react-hot-toast';
+import { create } from 'zustand';
+import type { Task } from '@/types/db-tables';
+import { db } from '@/utils/firebase';
+import { useAuthStore } from './auth';
+import { useErrorStore } from './error-handler';
 
 interface TasksState {
   tasks: Task[];
   isLoading: boolean;
   error: string | null;
   fetchTasks: () => Promise<void>;
-  createTask: (task: TablesInsert<'tasks'>) => Promise<void>;
-  updateTask: (id: number, task: TablesUpdate<'tasks'>) => Promise<void>;
-  deleteTask: (id: number) => Promise<void>;
+  createTask: (task: Omit<Task, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateTask: (id: string, task: Partial<Omit<Task, 'id' | 'user_id'>>) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
 }
 
-export const useTasksStore = create<TasksState>(set => ({
+export const useTasksStore = create<TasksState>((set) => ({
   tasks: [],
   isLoading: false,
   error: null,
+
   fetchTasks: async () => {
     try {
       set({ isLoading: true, error: null });
       const user = useAuthStore.getState().user;
       if (!user) {
-        useErrorStore.getState().showError(new Error('User not authenticated'));
-        set({ isLoading: false, error: 'User not authenticated' });
+        set({ isLoading: false, tasks: [] });
         return;
       }
-      const { data, error } = await supabase.from('tasks').select('*').eq('user_id', user.id);
-      if (error) {
-        useErrorStore.getState().showError(error);
-        set({ isLoading: false, error: error.message });
-      } else {
-        set({ isLoading: false, tasks: data });
-      }
+
+      const q = query(collection(db, 'tasks'), where('user_id', '==', user.uid));
+      const querySnapshot = await getDocs(q);
+      const tasks = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Task[];
+
+      set({ isLoading: false, tasks });
     } catch (error) {
-      useErrorStore
-        .getState()
-        .showError(error instanceof Error ? error : new Error('Failed to fetch tasks'));
+      useErrorStore.getState().showError(error as Error);
       set({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to fetch tasks',
       });
     }
   },
-  createTask: async (task: Omit<Task, 'id' | 'created_at'>) => {
+
+  createTask: async (taskData: Omit<Task, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
     try {
       set({ isLoading: true, error: null });
       const user = useAuthStore.getState().user;
       if (!user) {
-        useErrorStore.getState().showError(new Error('User not authenticated'));
-        set({ isLoading: false, error: 'User not authenticated' });
-        return;
+        throw new Error('User not authenticated');
       }
-      const { data, error } = await supabase
-        .from('tasks')
-        .insert(task)
-        .eq('user_id', user.id)
-        .select();
-      if (error) {
-        useErrorStore.getState().showError(error);
-        set({ isLoading: false, error: error.message });
-      } else {
-        set(state => ({
-          isLoading: false,
-          tasks: [...state.tasks, ...data],
-        }));
-        toast.success('Task created successfully');
-      }
+
+      const newTask = {
+        ...taskData,
+        user_id: user.uid,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const docRef = await addDoc(collection(db, 'tasks'), newTask);
+      set((state) => ({
+        isLoading: false,
+        tasks: [...state.tasks, { id: docRef.id, ...newTask } as Task],
+      }));
+      toast.success('Task created successfully');
     } catch (error) {
-      useErrorStore
-        .getState()
-        .showError(error instanceof Error ? error : new Error('Failed to create task'));
+      useErrorStore.getState().showError(error as Error);
       set({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to create task',
       });
     }
   },
-  updateTask: async (id: number, task: TablesUpdate<'tasks'>) => {
+
+  updateTask: async (id: string, taskData: Partial<Omit<Task, 'id' | 'user_id'>>) => {
     try {
       set({ isLoading: true, error: null });
-      const user = useAuthStore.getState().user;
-      if (!user) {
-        useErrorStore.getState().showError(new Error('User not authenticated'));
-        set({ isLoading: false, error: 'User not authenticated' });
-        return;
-      }
-      const { data, error } = await supabase
-        .from('tasks')
-        .update(task)
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .select();
-      if (error) {
-        useErrorStore.getState().showError(error);
-        set({ isLoading: false, error: error.message });
-      } else {
-        set(state => ({
-          isLoading: false,
-          tasks: state.tasks.map(t => (t.id === id ? data[0] : t)),
-        }));
-        toast.success('Task updated successfully');
-      }
+      const taskRef = doc(db, 'tasks', id);
+      const updateData = {
+        ...taskData,
+        updated_at: new Date().toISOString(),
+      };
+
+      await updateDoc(taskRef, updateData);
+      set((state) => ({
+        isLoading: false,
+        tasks: state.tasks.map((task) => (task.id === id ? { ...task, ...updateData } : task)),
+      }));
+      toast.success('Task updated successfully');
     } catch (error) {
-      useErrorStore
-        .getState()
-        .showError(error instanceof Error ? error : new Error('Failed to update task'));
+      useErrorStore.getState().showError(error as Error);
       set({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to update task',
       });
     }
   },
-  deleteTask: async (id: number) => {
+
+  deleteTask: async (id: string) => {
     try {
       set({ isLoading: true, error: null });
-      const user = useAuthStore.getState().user;
-      if (!user) {
-        useErrorStore.getState().showError(new Error('User not authenticated'));
-        set({ isLoading: false, error: 'User not authenticated' });
-        return;
-      }
-      const { error } = await supabase.from('tasks').delete().eq('id', id).eq('user_id', user.id);
-      if (error) {
-        useErrorStore.getState().showError(error);
-        set({ isLoading: false, error: error.message });
-      } else {
-        set(state => ({
-          isLoading: false,
-          tasks: state.tasks.filter(t => t.id !== id),
-        }));
-        toast.success('Task deleted successfully');
-      }
+      await deleteDoc(doc(db, 'tasks', id));
+      set((state) => ({
+        isLoading: false,
+        tasks: state.tasks.filter((task) => task.id !== id),
+      }));
+      toast.success('Task deleted successfully');
     } catch (error) {
-      useErrorStore
-        .getState()
-        .showError(error instanceof Error ? error : new Error('Failed to delete task'));
+      useErrorStore.getState().showError(error as Error);
       set({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to delete task',

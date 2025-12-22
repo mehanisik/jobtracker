@@ -1,83 +1,75 @@
-import { Calendar, MapPin, Trash2, type LucideIcon } from 'lucide-react';
+import type * as React from 'react';
 
-interface CardProps {
-  title: string;
-  subtitle?: string;
-  description?: string;
-  icon?: LucideIcon;
-  status?: {
-    label: string;
-    color: string;
-  };
-  date?: string;
-  location?: string;
-  onDelete?: () => void;
-  children?: React.ReactNode;
-  className?: string;
-}
+import { cn } from '@/utils/cn';
 
-export default function Card({
-  title,
-  subtitle,
-  description,
-  icon: Icon,
-  status,
-  date,
-  location,
-  onDelete,
-  children,
-  className = '',
-}: CardProps) {
+function Card({ className, ...props }: React.ComponentProps<'div'>) {
   return (
-    <div className={`bg-card text-card-foreground rounded-lg border p-4 shadow-sm ${className}`}>
-      <div className="flex items-start justify-between">
-        <div className="flex items-start gap-3">
-          {Icon && (
-            <div className="bg-primary/10 text-primary flex h-10 w-10 items-center justify-center rounded-full">
-              <Icon className="h-5 w-5" />
-            </div>
-          )}
-          <div>
-            <h3 className="font-semibold">{title}</h3>
-            {subtitle && <p className="text-muted-foreground text-sm">{subtitle}</p>}
-          </div>
-        </div>
-        {onDelete && (
-          <button
-            type="button"
-            onClick={onDelete}
-            className="text-destructive hover:text-destructive/80 rounded-full p-1 transition-colors hover:bg-destructive/10  hover:border hover:border-destructive hover:cursor-pointer"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        )}
-      </div>
-
-      {description && <p className="mt-2 text-sm">{description}</p>}
-
-      <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
-        {status && (
-          <span
-            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${status.color}`}
-          >
-            {status.label}
-          </span>
-        )}
-        {date && (
-          <span className="text-muted-foreground flex items-center gap-1">
-            <Calendar className="h-4 w-4" />
-            {date}
-          </span>
-        )}
-        {location && (
-          <span className="text-muted-foreground flex items-center gap-1">
-            <MapPin className="h-4 w-4" />
-            {location}
-          </span>
-        )}
-      </div>
-
-      {children && <div className="mt-4">{children}</div>}
-    </div>
+    <div
+      data-slot='card'
+      className={cn(
+        'bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm',
+        className,
+      )}
+      {...props}
+    />
   );
 }
+
+function CardHeader({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot='card-header'
+      className={cn(
+        '@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6',
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function CardTitle({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot='card-title'
+      className={cn('leading-none font-semibold', className)}
+      {...props}
+    />
+  );
+}
+
+function CardDescription({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot='card-description'
+      className={cn('text-muted-foreground text-sm', className)}
+      {...props}
+    />
+  );
+}
+
+function CardAction({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot='card-action'
+      className={cn('col-start-2 row-span-2 row-start-1 self-start justify-self-end', className)}
+      {...props}
+    />
+  );
+}
+
+function CardContent({ className, ...props }: React.ComponentProps<'div'>) {
+  return <div data-slot='card-content' className={cn('px-6', className)} {...props} />;
+}
+
+function CardFooter({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot='card-footer'
+      className={cn('flex items-center px-6 [.border-t]:pt-6', className)}
+      {...props}
+    />
+  );
+}
+
+export { Card, CardHeader, CardFooter, CardTitle, CardAction, CardDescription, CardContent };

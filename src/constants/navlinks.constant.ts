@@ -1,5 +1,5 @@
+import { Briefcase, ClipboardList, Code, FileText, Home } from 'lucide-react';
 import type { NavItem } from '@/types/nav-item';
-import { Home, Briefcase, FileText, Code, ClipboardList } from 'lucide-react';
 
 export const navItems: NavItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: Home },

@@ -1,13 +1,11 @@
-import { useCallback, useState, useMemo, useEffect } from 'react';
-import { Search, Trash, LayoutGrid, Table as TableIcon } from 'lucide-react';
-import Table from '@/components/ui/table';
-import { useApplicationsStore } from '@/store/applications';
-import type { Tables } from '@/types/database';
+import { LayoutGrid, Search, Table as TableIcon, Trash } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { DataTable } from '@/components/ui/data-table';
 import { JOB_STATUSES } from '@/constants/job-statuses.constant';
-import { useInterviewsStore } from '@/store/interviews';
+import { useApplicationsStore } from '@/store/applications';
 import { useAuthStore } from '@/store/auth';
-
-type JobApplication = Tables<'job_applications'>;
+import { useInterviewsStore } from '@/store/interviews';
+import type { JobApplication } from '@/types/db-tables';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -27,34 +25,34 @@ function ApplicationsPage() {
   }, [fetchApplications]);
 
   const handleDelete = useCallback(
-    async (id: number) => {
+    async (id: string) => {
       try {
         await deleteApplication(id);
       } catch (error) {
         console.error('Failed to delete application:', error);
       }
     },
-    [deleteApplication]
+    [deleteApplication],
   );
 
   const handleStatusChange = useCallback(
-    async (id: number, newStatus: Tables<'job_applications'>['status']) => {
+    async (id: string, newStatus: string) => {
       await updateApplication(id, { status: newStatus });
-      if (newStatus === 'interviewing' && user?.id) {
+      if (newStatus === 'interviewing' && user?.uid) {
         void createInterview({
           interview_date: new Date().toISOString(),
           interview_type: 'phone',
-          location: applications.find(app => app.id === id)?.location ?? '',
+          location: applications.find((app) => app.id === id)?.location ?? '',
           status: 'scheduled',
-          user_id: user.id,
+          user_id: user.uid,
         });
       }
     },
-    [updateApplication, user?.id, createInterview, applications]
+    [updateApplication, user?.uid, createInterview, applications],
   );
 
   const filteredApplications = useMemo(() => {
-    return applications.filter(app => {
+    return applications.filter((app: JobApplication) => {
       const matchesSearch =
         search.toLowerCase() === '' ||
         app.company_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -83,7 +81,7 @@ function ApplicationsPage() {
   };
 
   const handlePageChange = (direction: 'prev' | 'next') => {
-    setCurrentPage(p => {
+    setCurrentPage((p) => {
       if (direction === 'prev') {
         return Math.max(1, p - 1);
       }
@@ -91,69 +89,69 @@ function ApplicationsPage() {
     });
   };
 
-  const tableActions = (application: Tables<'job_applications'>) => {
+  const tableActions = (application: JobApplication) => {
     return (
-      <div className="flex gap-2">
+      <div className='flex gap-2'>
         <button
-          type="button"
+          type='button'
           onClick={() => {
             void handleDelete(application.id);
           }}
-          className="text-muted-foreground hover:text-destructive"
+          className='text-muted-foreground hover:text-destructive'
         >
-          <Trash className="h-4 w-4" />
+          <Trash className='h-4 w-4' />
         </button>
       </div>
     );
   };
 
   return (
-    <div className="w-full">
-      <main className="mx-auto max-w-[100rem] px-6 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-foreground text-2xl font-bold">Applications</h1>
+    <div className='w-full'>
+      <main className='mx-auto max-w-[100rem] px-6 py-8'>
+        <div className='mb-6 flex items-center justify-between'>
+          <h1 className='text-foreground text-2xl font-bold'>Applications</h1>
         </div>
         {isLoading ? (
-          <div className="border-muted bg-background flex h-64 flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
-            <p className="text-muted-foreground mb-4 text-lg">Loading applications...</p>
+          <div className='border-muted bg-background flex h-64 flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center'>
+            <p className='text-muted-foreground mb-4 text-lg'>Loading applications...</p>
           </div>
         ) : applications.length === 0 ? (
-          <div className="border-muted bg-background flex h-64 flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
-            <p className="text-muted-foreground mb-4 text-lg">No applications found</p>
-            <p className="text-muted-foreground text-sm">
+          <div className='border-muted bg-background flex h-64 flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center'>
+            <p className='text-muted-foreground mb-4 text-lg'>No applications found</p>
+            <p className='text-muted-foreground text-sm'>
               Add your first application to start tracking
             </p>
           </div>
         ) : (
-          <div className="relative">
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex gap-2">
-                <div className="border-border flex items-center gap-2 rounded-lg border p-2">
-                  <Search className="text-muted-foreground h-4 w-4" />
+          <div className='relative'>
+            <div className='mb-4 flex items-center justify-between'>
+              <div className='flex gap-2'>
+                <div className='border-border flex items-center gap-2 rounded-lg border p-2'>
+                  <Search className='text-muted-foreground h-4 w-4' />
                   <input
-                    type="text"
-                    placeholder="Search"
+                    type='text'
+                    placeholder='Search'
                     value={search}
                     onChange={handleSearchChange}
-                    className="rounded-lg border-none bg-transparent px-4 py-2 outline-none"
+                    className='rounded-lg border-none bg-transparent px-4 py-2 outline-none'
                   />
                 </div>
                 <select
-                  className="border-border rounded-lg border bg-transparent px-4 py-2"
+                  className='border-border rounded-lg border bg-transparent px-4 py-2'
                   value={statusFilter}
                   onChange={handleStatusFilterChange}
                 >
-                  <option value="all">All Status</option>
-                  {Object.values(JOB_STATUSES).map(option => (
+                  <option value='all'>All Status</option>
+                  {Object.values(JOB_STATUSES).map((option) => (
                     <option key={option} value={option}>
                       {option}
                     </option>
                   ))}
                 </select>
               </div>
-              <div className="flex gap-2">
+              <div className='flex gap-2'>
                 <button
-                  type="button"
+                  type='button'
                   className={`border-border rounded-lg border p-2 ${
                     view === 'grid' ? 'bg-primary text-primary-foreground' : 'bg-transparent'
                   }`}
@@ -161,10 +159,10 @@ function ApplicationsPage() {
                     setView('grid');
                   }}
                 >
-                  <LayoutGrid className="h-4 w-4" />
+                  <LayoutGrid className='h-4 w-4' />
                 </button>
                 <button
-                  type="button"
+                  type='button'
                   onClick={() => {
                     setView('table');
                   }}
@@ -172,20 +170,20 @@ function ApplicationsPage() {
                     view === 'table' ? 'bg-primary text-primary-foreground' : 'bg-transparent'
                   }`}
                 >
-                  <TableIcon className="h-4 w-4" />
+                  <TableIcon className='h-4 w-4' />
                 </button>
               </div>
             </div>
 
             {view === 'table' ? (
-              <Table<JobApplication>
+              <DataTable<JobApplication>
                 columns={['Company', 'Position', 'Location', 'Date Applied', 'Status']}
                 data={paginatedApplications}
                 currentPage={currentPage}
                 totalPages={totalPages}
                 onPageChange={handlePageChange}
                 actions={tableActions}
-                renderRow={app => ({
+                renderRow={(app: JobApplication) => ({
                   Company: app.company_name,
                   Position: app.position_title,
                   Location: app.location,
@@ -194,13 +192,13 @@ function ApplicationsPage() {
                     : 'N/A',
                   Status: (
                     <select
-                      className="border-border rounded border bg-transparent px-2 py-1"
+                      className='border-border rounded border bg-transparent px-2 py-1'
                       value={app.status}
-                      onChange={e => {
+                      onChange={(e) => {
                         void handleStatusChange(app.id, e.target.value as JobApplication['status']);
                       }}
                     >
-                      {Object.values(JOB_STATUSES).map(option => (
+                      {Object.values(JOB_STATUSES).map((option) => (
                         <option key={option} value={option}>
                           {option}
                         </option>
@@ -210,24 +208,24 @@ function ApplicationsPage() {
                 })}
               />
             ) : (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {paginatedApplications.map(application => (
+              <div className='grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3'>
+                {paginatedApplications.map((application) => (
                   <div
                     key={application.id}
-                    className="bg-card border-border hover:bg-muted/50 rounded-lg border p-4 transition-colors"
+                    className='bg-card border-border hover:bg-muted/50 rounded-lg border p-4 transition-colors'
                   >
-                    <div className="mb-4 flex items-start justify-between">
+                    <div className='mb-4 flex items-start justify-between'>
                       <div>
-                        <h3 className="text-foreground font-medium">
+                        <h3 className='text-foreground font-medium'>
                           {application.position_title}
                         </h3>
-                        <p className="text-muted-foreground text-sm">{application.company_name}</p>
+                        <p className='text-muted-foreground text-sm'>{application.company_name}</p>
                       </div>
                       {tableActions(application)}
                     </div>
-                    <div className="space-y-2">
-                      <p className="text-muted-foreground text-sm">{application.location}</p>
-                      <p className="text-muted-foreground text-sm">
+                    <div className='space-y-2'>
+                      <p className='text-muted-foreground text-sm'>{application.location}</p>
+                      <p className='text-muted-foreground text-sm'>
                         Applied:{' '}
                         {application.updated_at
                           ? new Date(application.updated_at).toLocaleDateString()
@@ -235,16 +233,16 @@ function ApplicationsPage() {
                       </p>
                       <div>
                         <select
-                          className="border-border w-full rounded border bg-transparent px-2 py-1 text-sm"
+                          className='border-border w-full rounded border bg-transparent px-2 py-1 text-sm'
                           value={application.status}
-                          onChange={e => {
+                          onChange={(e) => {
                             void handleStatusChange(
                               application.id,
-                              e.target.value as JobApplication['status']
+                              e.target.value as JobApplication['status'],
                             );
                           }}
                         >
-                          {Object.values(JOB_STATUSES).map(option => (
+                          {Object.values(JOB_STATUSES).map((option) => (
                             <option key={option} value={option}>
                               {option}
                             </option>

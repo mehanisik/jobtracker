@@ -1,11 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from './utils/session-provider';
-import { BrowserRouter, Route, Routes, Navigate } from 'react-router';
-import { ThemeProvider } from './utils/theme-provider';
 import { lazy, Suspense } from 'react';
-import Loader from './components/ui/loading';
-import { ErrorBoundary } from './components/error-boundary';
 import { Toaster } from 'react-hot-toast';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
+import { ErrorBoundary } from './components/error-boundary';
+import Loader from './components/ui/loading';
+import { AuthProvider } from './utils/session-provider';
+import { ThemeProvider } from './utils/theme-provider';
 
 const queryClient = new QueryClient();
 const DashboardPage = lazy(() => import('./pages/dashboard'));
@@ -27,24 +27,24 @@ const App = () => {
             <ErrorBoundary>
               <Suspense fallback={<Loader />}>
                 <Routes>
-                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  <Route path='/' element={<Navigate to='/dashboard' replace />} />
 
-                  <Route path="auth" element={<AuthPage />} />
+                  <Route path='auth' element={<AuthPage />} />
 
-                  <Route path="dashboard" element={<PageLayout />}>
+                  <Route path='dashboard' element={<PageLayout />}>
                     <Route index element={<DashboardPage />} />
-                    <Route path="leetcode" element={<LeetCodePage />} />
-                    <Route path="leetcode/categories" element={<CategoriesPage />} />
-                    <Route path="applications" element={<Applications />} />
-                    <Route path="documents" element={<DocumentsPage />} />
-                    <Route path="jobs" element={<JobsPage />} />
+                    <Route path='leetcode' element={<LeetCodePage />} />
+                    <Route path='leetcode/categories' element={<CategoriesPage />} />
+                    <Route path='applications' element={<Applications />} />
+                    <Route path='documents' element={<DocumentsPage />} />
+                    <Route path='jobs' element={<JobsPage />} />
                   </Route>
 
-                  <Route path="*" element={<NotFoundPage />} />
+                  <Route path='*' element={<NotFoundPage />} />
                 </Routes>
               </Suspense>
             </ErrorBoundary>
-            <Toaster position="top-right" />
+            <Toaster position='top-right' />
           </BrowserRouter>
         </AuthProvider>
       </ThemeProvider>

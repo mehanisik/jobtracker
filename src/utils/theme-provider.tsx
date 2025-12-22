@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, type ReactNode, useMemo, useCallback } from 'react';
+import { createContext, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 type Theme = 'light' | 'dark';
 
@@ -40,7 +40,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
       toggleTheme,
       setTheme,
     }),
-    [theme, toggleTheme, setTheme]
+    [theme, toggleTheme],
   );
 
   return <ThemeContext value={values}>{children}</ThemeContext>;

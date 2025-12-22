@@ -1,12 +1,12 @@
-import { create } from 'zustand';
 import toast from 'react-hot-toast';
+import { create } from 'zustand';
 
 export class AppError extends Error {
   constructor(
     message: string,
     public code?: string,
     public status?: number,
-    public details?: unknown
+    public details?: unknown,
   ) {
     super(message);
     this.name = 'AppError';
@@ -21,22 +21,22 @@ interface ErrorState {
   showError: (error: Error | AppError) => void;
 }
 
-export const useErrorStore = create<ErrorState>(set => ({
+export const useErrorStore = create<ErrorState>((set) => ({
   errors: [],
-  addError: error => {
-    set(state => ({
+  addError: (error) => {
+    set((state) => ({
       errors: [...state.errors, error],
     }));
   },
-  removeError: code => {
-    set(state => ({
-      errors: state.errors.filter(error => error.code !== code),
+  removeError: (code) => {
+    set((state) => ({
+      errors: state.errors.filter((error) => error.code !== code),
     }));
   },
   clearErrors: () => {
     set({ errors: [] });
   },
-  showError: error => {
+  showError: (error) => {
     console.error('Error:', error);
     toast.error(error.message || 'An unexpected error occurred', {
       duration: 5000,

@@ -1,10 +1,21 @@
-import type { JobApplication } from '@/types/db-tables';
-import { create } from 'zustand';
-import { useAuthStore } from './auth';
-import supabase from '@/utils/supabase';
-import type { TablesInsert, TablesUpdate } from '@/types/database';
-import { useErrorStore } from './error-handler';
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
 import toast from 'react-hot-toast';
+import { create } from 'zustand';
+import type { JobApplication } from '@/types/db-tables';
+import { db } from '@/utils/firebase';
+import { useAuthStore } from './auth';
+import { useErrorStore } from './error-handler';
 
 interface ApplicationsState {
   applications: JobApplication[];
@@ -13,12 +24,17 @@ interface ApplicationsState {
   recentApplications: JobApplication[] | null;
   fetchRecentApplications: () => Promise<void>;
   fetchApplications: () => Promise<void>;
-  createApplication: (application: TablesInsert<'job_applications'>) => Promise<void>;
-  updateApplication: (id: number, application: TablesUpdate<'job_applications'>) => Promise<void>;
-  deleteApplication: (id: number) => Promise<void>;
+  createApplication: (
+    application: Omit<JobApplication, 'id' | 'user_id' | 'created_at' | 'updated_at'>,
+  ) => Promise<void>;
+  updateApplication: (
+    id: string,
+    application: Partial<Omit<JobApplication, 'id' | 'user_id'>>,
+  ) => Promise<void>;
+  deleteApplication: (id: string) => Promise<void>;
 }
 
-export const useApplicationsStore = create<ApplicationsState>(set => ({
+export const useApplicationsStore = create<ApplicationsState>((set) => ({
   applications: [],
   isLoading: false,
   error: null,
@@ -29,26 +45,20 @@ export const useApplicationsStore = create<ApplicationsState>(set => ({
       set({ isLoading: true, error: null });
       const user = useAuthStore.getState().user;
       if (!user) {
-        useErrorStore.getState().showError(new Error('User not authenticated'));
-        set({ isLoading: false, error: 'User not authenticated' });
+        set({ isLoading: false, applications: [] });
         return;
       }
 
-      const { data, error } = await supabase
-        .from('job_applications')
-        .select('*')
-        .eq('user_id', user.id);
+      const q = query(collection(db, 'job_applications'), where('user_id', '==', user.uid));
+      const querySnapshot = await getDocs(q);
+      const applications = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as JobApplication[];
 
-      if (error) {
-        useErrorStore.getState().showError(error);
-        set({ isLoading: false, error: error.message });
-      } else {
-        set({ isLoading: false, applications: data });
-      }
+      set({ isLoading: false, applications });
     } catch (error) {
-      useErrorStore
-        .getState()
-        .showError(error instanceof Error ? error : new Error('Failed to fetch applications'));
+      useErrorStore.getState().showError(error as Error);
       set({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to fetch applications',
@@ -61,30 +71,25 @@ export const useApplicationsStore = create<ApplicationsState>(set => ({
       set({ isLoading: true, error: null });
       const user = useAuthStore.getState().user;
       if (!user) {
-        useErrorStore.getState().showError(new Error('User not authenticated'));
-        set({ isLoading: false, error: 'User not authenticated' });
+        set({ isLoading: false, recentApplications: [] });
         return;
       }
 
-      const { data, error } = await supabase
-        .from('job_applications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
+      const q = query(
+        collection(db, 'job_applications'),
+        where('user_id', '==', user.uid),
+        orderBy('created_at', 'desc'),
+        limit(5),
+      );
+      const querySnapshot = await getDocs(q);
+      const recentApplications = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as JobApplication[];
 
-      if (error) {
-        useErrorStore.getState().showError(error);
-        set({ isLoading: false, error: error.message });
-      } else {
-        set({ isLoading: false, recentApplications: data });
-      }
+      set({ isLoading: false, recentApplications });
     } catch (error) {
-      useErrorStore
-        .getState()
-        .showError(
-          error instanceof Error ? error : new Error('Failed to fetch recent applications')
-        );
+      useErrorStore.getState().showError(error as Error);
       set({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to fetch recent applications',
@@ -92,32 +97,34 @@ export const useApplicationsStore = create<ApplicationsState>(set => ({
     }
   },
 
-  createApplication: async (application: TablesInsert<'job_applications'>) => {
+  createApplication: async (
+    applicationData: Omit<JobApplication, 'id' | 'user_id' | 'created_at' | 'updated_at'>,
+  ) => {
     try {
       set({ isLoading: true, error: null });
       const user = useAuthStore.getState().user;
       if (!user) {
-        useErrorStore.getState().showError(new Error('User not authenticated'));
-        set({ isLoading: false, error: 'User not authenticated' });
-        return;
+        throw new Error('User not authenticated');
       }
 
-      const { data, error } = await supabase.from('job_applications').insert(application).select();
+      const newApplication = {
+        ...applicationData,
+        user_id: user.uid,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
 
-      if (error) {
-        useErrorStore.getState().showError(error);
-        set({ isLoading: false, error: error.message });
-      } else {
-        set(state => ({
-          isLoading: false,
-          applications: [...state.applications, ...data],
-        }));
-        toast.success('Application created successfully');
-      }
+      const docRef = await addDoc(collection(db, 'job_applications'), newApplication);
+      set((state) => ({
+        isLoading: false,
+        applications: [
+          ...state.applications,
+          { id: docRef.id, ...newApplication } as JobApplication,
+        ],
+      }));
+      toast.success('Application created successfully');
     } catch (error) {
-      useErrorStore
-        .getState()
-        .showError(error instanceof Error ? error : new Error('Failed to create application'));
+      useErrorStore.getState().showError(error as Error);
       set({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to create application',
@@ -125,29 +132,28 @@ export const useApplicationsStore = create<ApplicationsState>(set => ({
     }
   },
 
-  updateApplication: async (id: number, application: TablesUpdate<'job_applications'>) => {
+  updateApplication: async (
+    id: string,
+    applicationData: Partial<Omit<JobApplication, 'id' | 'user_id'>>,
+  ) => {
     try {
       set({ isLoading: true, error: null });
-      const { data, error } = await supabase
-        .from('job_applications')
-        .update(application)
-        .eq('id', id)
-        .select();
+      const appRef = doc(db, 'job_applications', id);
+      const updateData = {
+        ...applicationData,
+        updated_at: new Date().toISOString(),
+      };
 
-      if (error) {
-        useErrorStore.getState().showError(error);
-        set({ isLoading: false, error: error.message });
-      } else {
-        set(state => ({
-          isLoading: false,
-          applications: state.applications.map(app => (app.id === id ? data[0] : app)),
-        }));
-        toast.success('Application updated successfully');
-      }
+      await updateDoc(appRef, updateData);
+      set((state) => ({
+        isLoading: false,
+        applications: state.applications.map((app) =>
+          app.id === id ? { ...app, ...updateData } : app,
+        ),
+      }));
+      toast.success('Application updated successfully');
     } catch (error) {
-      useErrorStore
-        .getState()
-        .showError(error instanceof Error ? error : new Error('Failed to update application'));
+      useErrorStore.getState().showError(error as Error);
       set({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to update application',
@@ -155,25 +161,17 @@ export const useApplicationsStore = create<ApplicationsState>(set => ({
     }
   },
 
-  deleteApplication: async (id: number) => {
+  deleteApplication: async (id: string) => {
     try {
       set({ isLoading: true, error: null });
-      const { error } = await supabase.from('job_applications').delete().eq('id', id);
-
-      if (error) {
-        useErrorStore.getState().showError(error);
-        set({ isLoading: false, error: error.message });
-      } else {
-        set(state => ({
-          isLoading: false,
-          applications: state.applications.filter(app => app.id !== id),
-        }));
-        toast.success('Application deleted successfully');
-      }
+      await deleteDoc(doc(db, 'job_applications', id));
+      set((state) => ({
+        isLoading: false,
+        applications: state.applications.filter((app) => app.id !== id),
+      }));
+      toast.success('Application deleted successfully');
     } catch (error) {
-      useErrorStore
-        .getState()
-        .showError(error instanceof Error ? error : new Error('Failed to delete application'));
+      useErrorStore.getState().showError(error as Error);
       set({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to delete application',

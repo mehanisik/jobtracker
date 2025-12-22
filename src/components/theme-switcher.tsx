@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Moon } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { Moon } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface ThemeOption {
   value: 'light' | 'dark';
@@ -15,7 +15,7 @@ interface ThemeSwitcherProps {
 
 export default function ThemeSwitcher({ themes, defaultTheme = 'light' }: ThemeSwitcherProps) {
   const [theme, setTheme] = useState<'light' | 'dark'>(defaultTheme);
-  const currentTheme = themes.find(t => t.value === theme);
+  const currentTheme = themes.find((t) => t.value === theme);
   const Icon = currentTheme?.icon ?? Moon;
 
   useEffect(() => {
@@ -38,12 +38,12 @@ export default function ThemeSwitcher({ themes, defaultTheme = 'light' }: ThemeS
 
   return (
     <button
-      type="button"
+      type='button'
       onClick={toggleTheme}
-      className="bg-secondary hover:bg-secondary/80 text-secondary-foreground focus:ring-ring rounded-full p-2 focus:ring-2 focus:outline-none"
+      className='bg-secondary hover:bg-secondary/80 text-secondary-foreground focus:ring-ring rounded-full p-2 focus:ring-2 focus:outline-none'
       aria-label={currentTheme?.label ?? `Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
     >
-      <Icon className="h-5 w-5" />
+      <Icon className='h-5 w-5' />
     </button>
   );
 }

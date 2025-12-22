@@ -1,4 +1,4 @@
-import { string, date, object, number, type InferType } from 'yup';
+import { date, type InferType, number, object, string } from 'yup';
 
 export const questionSchema = object({
   title: string().required('Question title is required'),
